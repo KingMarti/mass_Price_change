@@ -1,3 +1,4 @@
+from asyncio.windows_events import NULL
 from selenium import webdriver
 import undetected_chromedriver.v2 as uc
 from selenium.webdriver.common.keys import Keys
@@ -7,8 +8,28 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import Select
 import time
+import sqlite3
+from sqlite3 import Error
+import re
+def create_db():
+    conn = None
+    global db_name
+    db_name='pricing.db'
+    try:
+        print('Trying to open pricing db')
+        conn =sqlite3.connect(db_name)
+        print(sqlite3.version)
+        c = conn.cursor()
+        return conn,c
+    except Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.close()
+
 
 def manyvids():
+    site_name='manyvids'
     username=input('Enter your manyvids username: ')
     password=input('Enter your manyvids passowrd: ')
     price=input('Enter New Video Price: ')
@@ -30,30 +51,68 @@ def manyvids():
     bot.get('https://manyvids.com/MV-Content-Manager/')
     print('loading content manager page')
     time.sleep(3)
-    pages = bot.find_elements(By.CLASS_NAME,'page-link')
-    print('Building Video Index, Please Wait')
-    links=[]
-    new_link_list=[]
-    video_list =[]
-    for page in pages:
-        print('there are ',len(pages), 'pages of videos')
-        drop_btn = bot.find_elements(By.XPATH,'//i[contains(@data-toggle,"dropdown")]')
-        time.sleep(3)
-        videos = bot.find_elements(By.CLASS_NAME,'manage-content__list-item')
-        for vid in videos:
-            video_links=bot.find_elements(By.XPATH,'//a[contains(@title,"Edit your content")]')
-        for vid_link in video_links:
-            links.append(vid_link.get_attribute('href'))
-        print('Finished Indexing Videos On This Page')
+    i=0
+    videos=[]
+    last_page='f'
+    print('Getting video data')
+    while last_page=='f':
+        containers=bot.find_elements(By.CLASS_NAME,'manage-content__list-item')
+        video_links=bot.find_elements(By.XPATH,'//a[contains(text(),"Edit")]')
+        titles=bot.find_elements(By.CLASS_NAME,"manage-content__list-item__title")
+        prices=bot.find_elements(By.CLASS_NAME,'manage-content__list-item__label--price')
+        for item in containers:
+            id_count=str(i+1)
+            try:
+                ids=bot.find_elements(By.XPATH,'//*[@id="content-items-sorting"]/li['+id_count+']')
+            except:
+                print('didnt find ids')
+            try:
+                res=NULL
+                ftype=NULL
+                insert_data=('Manyvids',titles[i].text,prices[i].text,ids[0].get_attribute('data-content-id'),res,ftype)
+                if insert_data not in videos:
+                    videos.append(insert_data)
+                print(insert_data)
+            except:
+                print('failed insert data')
+                exit()
+            i+=1
         try:
-            bot.find_element(By.CLASS_NAME,'next').click()
+            time.sleep(3)
+            print('looking for next button')
+            bot.find_element(By.XPATH,'/html/body/div[6]/div/div/ul/li[5]/a').click()
+            print('loading next page')
+            i=0
+            time.sleep(5)            
         except:
-            print('unable to change page')
-    for i in links:
-        if i not in new_link_list:
-            new_link_list.append(i)
-    print('There are ', len(video_list), ' videos')
-    for link in new_link_list:
+            print('on last page')
+            last_page='t'
+            print('there are ',len(videos),' that were scanned')
+            time.sleep(10)
+    ############### DB Connect #############
+    try:
+        conn =sqlite3.connect(db_name)
+        print(sqlite3.version)
+        time.sleep(5)
+        c = conn.cursor()
+    except conn.Error as e:
+        print(e)
+    try:
+        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT NOT NULL,[res] TEXT,[ftype] TEXT)''')
+    except Error as e:
+        print(e)
+    try:
+        for d in videos:
+            sql = ''' INSERT INTO pricing_data(site_name,vid_title,price,link,res,ftype)
+        VALUES(?,?,?,?,?,?) '''
+            c.execute(sql, d)
+            conn.commit()
+        print('video written to db')
+    except Error as e:
+        print('Could not add data to database error: ',e)
+    for l in videos:
+        link='https://www.manyvids.com/Edit-vid/'+l[3]
+        print(l[1],' ',link)
         bot.get(link)
         time.sleep(3)
         pin=bot.find_element(By.ID,'appendedPrependedInput')
@@ -65,11 +124,13 @@ def manyvids():
         print('sent price of ',price)
         bot.find_element(By.ID,'saveVideo').click()
     print('all prices updated')
+    bot.close()
     main()
 
 
 
 def c4s():
+    site_name='c4s'
     username=input('Enter your Clips4Sale username: ')
     password=input('Enter your Clips4Sale passowrd: ')
     bot = uc.Chrome()
@@ -102,20 +163,51 @@ def c4s():
     bot.find_element(By.TAG_NAME,'body').send_keys(Keys.PAGE_DOWN)
     time.sleep(3)
     clip_url='https://admin.clips4sale.com/clips/show/'
+    data=[]
     c=0
     while c == 0:
+        i=2
+        t=0
         vids=bot.find_elements(By.CLASS_NAME,'item_id')
+        titles=bot.find_elements(By.CLASS_NAME,'item_title')
         for v in vids:
-            print(v.text)
+            #print(v.text)
+            price=bot.find_element(By.XPATH,'//*[@id="frm_list"]/table[1]/tbody/tr['+str(i)+']/td[3]/ul/li[3]/span[2]')
+            res=bot.find_element(By.XPATH,'//*[@id="frm_list"]/table[1]/tbody/tr['+str(i)+']/td[3]/ul/li[7]/span[2]')
+            ftype=bot.find_element(By.XPATH,'//*[@id="frm_list"]/table[1]/tbody/tr['+str(i)+']/td[3]/ul/li[6]/span[2]')
             v=v.text
+            print(v,' ',titles[t].text,' ', price.text, ' ', res.text, ' ',ftype.text)
+            data.append([site_name,titles[t].text,price.text,v,res.text,ftype.text])
             id=v.replace('ID: ','')
             video_ids.append(id)
-        time.sleep(4)
+            i+=1
+            t+=1
         try:
             bot.find_element(By.CLASS_NAME,'pagination_next-page-button').click()
         except:
             c=1
     print(len(video_ids),' video ids found')
+        ############### DB Connect #############
+    try:
+        conn =sqlite3.connect(db_name)
+        print(sqlite3.version)
+        time.sleep(5)
+        c = conn.cursor()
+    except conn.Error as e:
+        print(e)
+    try:
+        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT NOT NULL,[res] TEXT,[ftype] TEXT)''')
+    except Error as e:
+        print(e)
+    try:
+        for d in data:
+            sql = ''' INSERT INTO pricing_data(site_name,vid_title,price,link,res,ftype)
+        VALUES(?,?,?,?,?,?) '''
+            c.execute(sql, d)
+            conn.commit()
+        print('video written to db')
+    except Error as e:
+        print('Could not add data to database error: ',e)
     price=input('Enter the new price for the videos:\nNOTE: THE PRICE NEEDS TO BE AVALIBULE IN C4S DROPDOWN\n THESE ARE FROM $10.99 to $999.99 IN $1 INCREMENTS\n: ')
     while len(video_ids)!=0:
         for i in video_ids:
@@ -134,7 +226,9 @@ def c4s():
     print('All video prices updated, now closing browser session')
     bot.close()
     main()
+
 def apc():
+    site_name='apc'
     username=input('Enter your APClips email: ')
     password=input('Enter your APclips passowrd: ')
     price=input('Enter the new token amount for the video: ')
@@ -167,7 +261,7 @@ def apc():
             time.sleep(3)
 
     except:
-        ptint('fail')
+        print('fail')
     video_ids=[]
     bot.get('https://apclips.com/model/video')
     time.sleep(3)
@@ -175,23 +269,64 @@ def apc():
     print('tv is ',tv)
     tv=int(tv)
     btns=bot.find_elements(By.CLASS_NAME,'btn')
+    data=[]
+    res=NULL
+    ftype=NULL
+    i=0
     while len(video_ids) != tv:
         for b in btns:
             if  b.get_attribute('href'):
                 if 'https://apclips.com/video/edit/' in b.get_attribute('href'):
                     video_ids.append(b.get_attribute('href'))
+                    titles=bot.find_elements(By.CLASS_NAME,'video-title')
+                    title=titles[i+1].text
+                    print(title)
                     print('video id found', b.get_attribute('href'))
                     print (len(video_ids), 'videos currently in list')
+                    temp_id='row'+b.get_attribute('href')
+                    row_id=temp_id.replace('https://apclips.com/video/edit/','')
+                    old_price=bot.find_element(By.XPATH,'//*[@id="'+row_id+'"]/div[2]/p[2]').text
+                    old_price=old_price[-10:]
+                    op=old_price.replace(' ','')
+                    old_price=op.replace('Tokens','')
+                    data.append([site_name,title,price,row_id,res,ftype])
+                    i+=1
+                            ############### DB Connect #############
+    try:
+        conn =sqlite3.connect(db_name)
+        print(sqlite3.version)
+        time.sleep(5)
+        c = conn.cursor()
+    except conn.Error as e:
+        print(e)
+    try:
+        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT NOT NULL,[res] TEXT,[ftype] TEXT)''')
+    except Error as e:
+        print(e)
+    try:
+        for d in data:
+            sql = ''' INSERT INTO pricing_data(site_name,vid_title,price,link,res,ftype)
+        VALUES(?,?,?,?,?,?) '''
+            c.execute(sql, d)
+            conn.commit()
+        print('video written to db')
+    except Error as e:
+        print('Could not add data to database error: ',e)
+
+                    
         if len(video_ids) != tv:
             bot.find_element(By.XPATH,'//*[@id="videos"]/div[2]/div[2]/ul/li[5]').click()
     for l in video_ids:
         bot.get(l)
         time.sleep(3)
         pin=bot.find_element(By.CLASS_NAME,'input-price')
+        old_price=pin.get_attribute('value')
+        print(old_price, ' is the old price')
         pin.clear()
         pin.send_keys(price)
         bot.find_element(By.XPATH,'//*[@id="video-form"]/div[3]/div[3]/button').click()
         time.sleep(4)
+    bot.close()
     main()
 
 def onlyfans():
@@ -249,4 +384,5 @@ def main():
     elif site_select=='5':
         exit()
 if __name__=='__main__':
+    create_db()
     main()
