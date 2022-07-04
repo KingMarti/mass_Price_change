@@ -84,7 +84,7 @@ def manyvids():
     except Error as e:
         print(e)
     try:
-        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT NOT NULL,[res] TEXT,[ftype] TEXT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT UNIQUE NOT NULL,[res] TEXT,[ftype] TEXT)''')
     except Error as e:
         print(e)
     try:
@@ -191,7 +191,7 @@ def c4s():
     except Error as e:
         print(e)
     try:
-        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT NOT NULL,[res] TEXT,[ftype] TEXT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT UNIQUE NOT NULL,[res] TEXT,[ftype] TEXT)''')
     except Error as e:
         print(e)
     try:
@@ -303,7 +303,7 @@ def apc():
     except conn.Error as e:
         print(e)
     try:
-        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT NOT NULL,[res] TEXT,[ftype] TEXT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT UNIQUE NOT NULL,[res] TEXT,[ftype] TEXT)''')
     except Error as e:
         print(e)
         start.run()
@@ -395,7 +395,7 @@ def onlyfans():
     except conn.Error as e:
         print(e)
     try:
-        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT NOT NULL,[res] TEXT,[ftype] TEXT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS pricing_data ([id] INTEGER PRIMARY KEY,[site_name] TEXT UNIQUE NOT NULL,[vid_title] TEXT NOT NULL,[price] TEXT NOT NULL,[link] TEXT NOT NULL,[res] TEXT,[ftype] TEXT)''')
     except Error as e:
         print(e)
     try:
